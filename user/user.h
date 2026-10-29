@@ -1,4 +1,5 @@
 struct stat;
+struct procinfo;
 
 // system calls
 int fork(void);
@@ -22,6 +23,7 @@ int getpid(void);
 char* sbrk(int);
 int sleep(int);
 int uptime(void);
+int procinfo(int pid, struct procinfo *info);
 
 // ulib.c
 int stat(const char*, struct stat*);

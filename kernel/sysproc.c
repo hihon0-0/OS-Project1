@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "procinfo.h"
 
 uint64
 sys_exit(void)
@@ -90,4 +91,25 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+// System call: retrieve information about a process.
+uint64
+sys_procinfo(void)
+{
+  int pid;
+  uint64 addr;
+  struct procinfo info;
+
+  argint(0, &pid);
+  argaddr(1, &addr);
+
+  if(getprocinfo(pid, &info) < 0)
+    return -1;
+
+  if(copyout(myproc()->pagetable, addr,
+             (char *)&info, sizeof(info)) < 0)
+    return -1;
+
+  return 0;
 }

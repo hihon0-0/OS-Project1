@@ -196,10 +196,8 @@ UPROGS=\
 	$U/_grind\
 	$U/_wc\
 	$U/_zombie\
-	$U/_trace\
-
-
-
+	/_trace\
+	/_test_procinfo\
 ifeq ($(LAB),syscall)
 UPROGS += \
 	$U/_attack\

@@ -1,0 +1,131 @@
+xv6 kernel is booting
+
+hart 2 starting
+hart 1 starting
+init: starting sh
+$ test_procinfo
+=== PROCINFO TEST ===
+PASS: query current process
+PASS: current PID
+PASS: current PPID
+PASS: current state is RUNNING
+PASS: current process name
+PASS: size equals current program break
+PASS: padding and unused name bytes are zero
+PASS: grow address space
+PASS: size after sbrk growth
+PASS: shrink address space
+PASS: size after sbrk shrink
+PASS: negative PID rejected
+PASS: zero PID rejected
+PASS: nonexistent PID rejected
+PASS: create synchronization pipes
+PASS: child verifies its PID and PPID
+PASS: parent queries living child
+PASS: living child state
+PASS: child inherits size and name
+PASS: release child
+PASS: reap successful child
+PASS: reaped PID no longer exists
+PASS: null pointer rejected
+PASS: address outside user space rejected
+PASS: prepare page boundary
+PASS: unmapped page rejected
+PASS: buffer crossing into unmapped page rejected
+PASS: restore program break
+PASS: valid call still works after errors
+=== ALL PROCINFO TESTS PASSED ===
+$ trace 8388608 test_procinfo
+=== PROCINFO TEST ===
+5: syscall procinfo -> 0
+PASS: query current process
+PASS: current PID
+PASS: current PPID
+PASS: current state is RUNNING
+PASS: current process name
+PASS: size equals current program break
+PASS: padding and unused name bytes are zero
+PASS: grow address space
+5: syscall procinfo -> 0
+PASS: size after sbrk growth
+PASS: shrink address space
+5: syscall procinfo -> 0
+PASS: size after sbrk shrink
+5: syscall procinfo -> -1
+PASS: negative PID rejected
+5: syscall procinfo -> -1
+PASS: zero PID rejected
+5: syscall procinfo -> -1
+PASS: nonexistent PID rejected
+PASS: create synchronization pipes
+6: syscall procinfo -> 0
+PASS: child verifies its PID and PPID
+5: syscall procinfo -> 0
+PASS: parent queries living child
+PASS: living child state
+PASS: child inherits size and name
+PASS: release child
+PASS: reap successful child
+5: syscall procinfo -> -1
+PASS: reaped PID no longer exists
+5: syscall procinfo -> -1
+PASS: null pointer rejected
+5: syscall procinfo -> -1
+PASS: address outside user space rejected
+PASS: prepare page boundary
+5: syscall procinfo -> -1
+PASS: unmapped page rejected
+5: syscall procinfo -> -1
+PASS: buffer crossing into unmapped page rejected
+PASS: restore program break
+5: syscall procinfo -> 0
+PASS: valid call still works after errors
+=== ALL PROCINFO TESTS PASSED ===
+$ usertests
+usertests starting
+test copyin: OK
+test copyout: OK
+test copyinstr1: OK
+test copyinstr2: OK
+test copyinstr3: OK
+test rwsbrk: OK
+test truncate1: OK
+test truncate2: OK
+test truncate3: OK
+test openiput: OK
+test exitiput: OK
+test iput: OK
+test opentest: OK
+test writetest: OK
+test writebig: OK
+test createtest: OK
+test dirtest: OK
+test exectest: OK
+test pipe1: OK
+test killstatus: OK
+test preempt: kill... wait... OK
+test exitwait: OK
+test reparent: OK
+test twochildren: OK
+test forkfork: OK
+test forkforkfork: OK
+test reparent2: OK
+test mem: OK
+test sharedfd: OK
+test fourfiles: OK
+test createdelete: OK
+test unlinkread: OK
+test linktest: OK
+test concreate: OK
+test linkunlink: OK
+test subdir: OK
+test bigwrite: OK
+test bigfile: OK
+test fourteen: OK
+test rmdot: OK
+test dirfile: OK
+test iref: OK
+test forktest: OK
+test sbrkbasic: OK
+test sbrkmuch: sbrkmuch: sbrk de-allocation didn't really deallocate
+FAILED

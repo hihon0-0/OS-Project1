@@ -75,15 +75,14 @@ Trong shell xv6:
 
 ```text
 test_procinfo
-trace 8388608 test_procinfo
 usertests
 ```
 
-Trên bản tích hợp đang kiểm tra, `SYS_procinfo=23`, nên mask trace là `1 << 23 = 8388608`. Nếu số syscall thay đổi khi tích hợp sau này, cần tính lại mask. `Ctrl-A`, sau đó `x` để thoát QEMU.
+Trên nhánh `feat-procinfo`, `SYS_procinfo=22` và chưa có syscall `trace`. Không chạy lệnh trace trên nhánh này. Lần kiểm chứng bổ sung trên bản tích hợp `2cc79ee` dùng `SYS_procinfo=23` và lệnh `trace 8388608 test_procinfo`. Khi tích hợp sau này cần giải quyết số syscall cùng nhóm. `Ctrl-A`, sau đó `x` để thoát QEMU.
 
 Các dấu hiệu thành công mong đợi: `=== ALL PROCINFO TESTS PASSED ===`, các dòng `syscall procinfo -> ...` trong lần chạy có trace, và `ALL TESTS PASSED` ở cuối usertests. Các dòng usertrap do bài test địa chỉ lỗi cố ý tạo ra không tự động có nghĩa là bộ test thất bại.
 
-## 7. Kết quả kiểm chứng
+## 7. Kết quả kiểm chứng trên bản tích hợp trước khi chuyển nhánh
 
 Kiểm chứng ngày 04/11/2026 trong Ubuntu trên WSL, GCC RISC-V 13.3.0, GNU Make 4.3, QEMU 8.2.2; xv6 chạy 3 CPU, RAM 128 MiB, cấu hình `LAB=syscall`.
 
@@ -99,8 +98,17 @@ Lỗi đối chứng liên quan đến cấu hình nền: trong `kernel/vm.c`, v
 
 Không khẳng định toàn bộ hệ điều hành đã qua usertests: các bài sau điểm thất bại chưa được chạy trong lượt kiểm thử này. Các log bàn giao gồm `procinfo-build.log`, `procinfo-validation.log` và `procinfo-baseline.log`; log baseline chứa lệnh và kết quả chạy trên mã gốc để đối chiếu độc lập.
 
+### Kiểm chứng trực tiếp trên nhánh feat-procinfo
+
+Sau khi chuyển phần bổ sung vào nhánh cá nhân, đã biên dịch sạch bằng `make clean`, `make` và `make qemu`. `test_procinfo` đạt đủ 29 kiểm tra. Chạy `usertests sbrkmuch` trên nhánh này tái hiện lỗi cấp phát bộ nhớ đã nêu ở trên. Không chạy trace trên nhánh này vì chưa có syscall trace. Không khẳng định toàn bộ usertests đã đạt.
+
+Bằng chứng chạy thực tế trong repo:
+- [Test trên feat-procinfo](testing/feat-procinfo-validation.txt)
+- [Test trên bản tích hợp](testing/procinfo-validation.txt)
+- [Đối chứng mã gốc](testing/procinfo-baseline.txt)
+
 ## 8. Phạm vi bàn giao
 
-Bản bổ sung dựa trên commit tích hợp `2cc79ee501e85373ac108abf3754b2ff67abbf9b`, thực hiện trên nhánh riêng `codex/procinfo-completion`. Thay đổi mã chức năng nằm trong `kernel/sysproc.c`; kiểm thử mở rộng nằm trong `user/test_procinfo.c`. Không gộp vào nhánh `syscall` trong phạm vi công việc này.
+Bản bổ sung đã được đưa vào nhánh `feat-procinfo`, trên nền commit `7f13e7d71176c43fa5e69e9be0f5f6c9c800bdb7`. Chỉ chuyển phần sửa `kernel/sysproc.c`, kiểm thử `user/test_procinfo.c` và tài liệu; không đưa các task tree/xargs/trace từ bản tích hợp vào nhánh cá nhân. Không gộp vào nhánh `syscall`. Báo cáo nằm tại `docs/task4-procinfo.md`.
 
 Tài liệu yêu cầu dùng để đối chiếu: https://docs.google.com/document/d/1aKAhr-Gm0KJMk88SbuDhZs8A5h_qVis0PlWqaqSlMI0/edit . Đây là phần nội dung để ghép vào báo cáo chung của nhóm, không phải báo cáo của toàn bộ bốn task.

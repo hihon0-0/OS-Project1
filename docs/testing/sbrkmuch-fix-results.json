@@ -1,0 +1,22 @@
+[
+  {
+    "command": "usertests sbrkmuch",
+    "status": "PASS",
+    "seconds": 20.9
+  },
+  {
+    "command": "test_procinfo",
+    "status": "PASS",
+    "seconds": 0.09
+  },
+  {
+    "command": "trace 8388608 test_procinfo",
+    "status": "PASS",
+    "seconds": 0.09
+  },
+  {
+    "command": "usertests",
+    "status": "PASS",
+    "seconds": 462.99
+  }
+]

@@ -1,0 +1,79 @@
+riscv64-linux-gnu-gcc -Wall -Werror -O -fno-omit-frame-pointer -ggdb -gdwarf-2 -DSOL_SYSCALL -DLAB_SYSCALL -MD -mcmodel=medany -fno-common -nostdlib -fno-builtin-strncpy -fno-builtin-strncmp -fno-builtin-strlen -fno-builtin-memset -fno-builtin-memmove -fno-builtin-memcmp -fno-builtin-log -fno-builtin-bzero -fno-builtin-strchr -fno-builtin-exit -fno-builtin-malloc -fno-builtin-putc -fno-builtin-free -fno-builtin-memcpy -Wno-main -fno-builtin-printf -fno-builtin-fprintf -fno-builtin-vprintf -I. -fno-stack-protector -fno-pie -no-pie   -c -o user/pi_ext.o user/pi_ext.c
+riscv64-linux-gnu-ld -z max-page-size=4096 -T user/user.ld -o user/_pi_ext user/pi_ext.o user/ulib.o user/usys.o user/printf.o user/umalloc.o
+riscv64-linux-gnu-objdump -S user/_pi_ext > user/pi_ext.asm
+riscv64-linux-gnu-objdump -t user/_pi_ext | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$/d' > user/pi_ext.sym
+mkfs/mkfs fs.img README  user/_cat user/_echo user/_xargs user/_forktest user/_grep user/_init user/_kill user/_ln user/_ls user/_tree user/_mkdir user/_rm user/_sh user/_stressfs user/_usertests user/_grind user/_wc user/_zombie user/_trace user/_test_procinfo user/_attack user/_attacktest user/_secret user/_pi_ext
+nmeta 46 (boot, super, log blocks 30 inode blocks 13, bitmap blocks 1) blocks 1954 total 2000
+balloc: first 1081 blocks have been allocated
+balloc: write bitmap block at sector 45
+qemu-system-riscv64 -machine virt -bios none -kernel kernel/kernel -m 128M -smp 3 -nographic -global virtio-mmio.force-legacy=false -drive file=fs.img,if=none,format=raw,id=x0 -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+
+xv6 kernel is booting
+
+hart 1 starting
+hart 2 starting
+init: starting sh
+$ test_procinfo
+=== PROCINFO TEST ===
+PID: 3
+PPID: 2
+State: 4
+Size: 16384 bytes
+Name: test_procinfo
+PASS: current process
+PASS: negative PID rejected
+PASS: nonexistent PID rejected
+PASS: parent-child relationship
+PASS: null pointer rejected
+=== ALL PROCINFO TESTS PASSED ===
+$ trace 8388608 test_procinfo
+=== PROCINFO TEST ===
+5: syscall procinfo -> 0
+PID: 5
+PPID: 2
+State: 4
+Size: 16384 bytes
+Name: test_procinfo
+PASS: current process
+5: syscall procinfo -> -1
+PASS: negative PID rejected
+5: syscall procinfo -> -1
+PASS: nonexistent PID rejected
+6: syscall procinfo -> 0
+PASS: parent-child relationship
+5: syscall procinfo -> -1
+PASS: null pointer rejected
+=== ALL PROCINFO TESTS PASSED ===
+$ pi_ext
+=== PROCINFO TEST ===
+PASS: query current process
+PASS: current PID
+PASS: current PPID
+PASS: current state is RUNNING
+PASS: current process name
+PASS: size equals current program break
+FAIL: padding and unused name bytes are zero
+PASS: grow address space
+PASS: size after sbrk growth
+PASS: shrink address space
+PASS: size after sbrk shrink
+PASS: negative PID rejected
+PASS: zero PID rejected
+PASS: nonexistent PID rejected
+PASS: create synchronization pipes
+PASS: child verifies its PID and PPID
+PASS: parent queries living child
+PASS: living child state
+PASS: child inherits size and name
+PASS: release child
+PASS: reap successful child
+PASS: reaped PID no longer exists
+PASS: null pointer rejected
+PASS: address outside user space rejected
+PASS: prepare page boundary
+PASS: unmapped page rejected
+PASS: buffer crossing into unmapped page rejected
+PASS: restore program break
+PASS: valid call still works after errors
+=== PROCINFO EXTENDED FAILURES: 1 ===
+$ 

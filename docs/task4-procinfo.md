@@ -179,3 +179,13 @@ Các file docs/testing của báo cáo cần được mang sang checkout kiểm 
 ### 9.5. Kết luận sau kiểm thử
 
 Procinfo trên nhánh tích hợp hoạt động đúng với các trường hợp chức năng đã chạy, nhưng chưa hoàn tất yêu cầu xóa dữ liệu dư trước khi trả về user-space. Chỉ sau khi bản sửa của feat-procinfo được nhóm tích hợp và bộ kiểm tra mở rộng đạt 29/29 mới có thể ghi nhận phần an toàn dữ liệu đã đạt trên nhánh tích hợp. Báo cáo này ghi kết quả test và đề xuất xử lý; không sửa hoặc gộp kernel vào nhánh tích hợp.
+## 10. Cập nhật sau khi sửa sbrkmuch ngày 06/11/2026
+
+Lỗi sbrkmuch ghi ở phần 7 và phần 9 đã được sửa trên nhánh `feat/integration`, commit `384a01e`. Bản sửa bỏ điều kiện LAB_SYSCALL quanh lệnh xóa trắng trang mới trong uvmalloc tại kernel/vm.c. Trang được cấp lại cho user-space không còn giữ dữ liệu từ lần dùng trước.
+
+Sau khi biên dịch sạch, đã chạy lại `usertests sbrkmuch`, `test_procinfo`, `trace 8388608 test_procinfo` và toàn bộ `usertests`: tất cả đều đạt. Lượt chạy toàn bộ usertests bao gồm test nhanh và test chậm, kết thúc bằng `ALL TESTS PASSED` sau khoảng 463 giây. Môi trường: Debian 12/WSL2, GCC RISC-V 12.2.0, QEMU 7.2.22, 3 CPU, RAM 128 MiB, LAB=syscall.
+
+- [Bản sửa và giải thích trên nhánh tích hợp](https://github.com/hihon0-0/OS-Project1/blob/384a01e/docs/fix-sbrkmuch.md).
+- [Log đầy đủ sau bản sửa](https://github.com/hihon0-0/OS-Project1/blob/384a01e/docs/testing/sbrkmuch-fix-validation.txt).
+
+Các kết quả không đạt ở phần 7 và phần 9 là kết quả lịch sử trên commit cũ; chúng không còn mô tả trạng thái sbrkmuch của nhánh tích hợp sau commit 384a01e. Việc xóa trắng trang user cũng ngăn kiểu khai thác tái sử dụng trang của bài attack trong lab gốc; xem tài liệu bản sửa về ảnh hưởng này. Bản sửa sbrkmuch không đồng thời sửa lỗi byte đệm của struct procinfo đã mô tả ở phần 9.3.

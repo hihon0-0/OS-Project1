@@ -48,4 +48,4 @@ test sbrkbasic: OK
 test sbrkmuch: sbrkmuch: sbrk de-allocation didn't really deallocate
 FAILED
 SOME TESTS FAILED
-$ 
+$

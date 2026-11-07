@@ -114,6 +114,8 @@ sys_procinfo(void)
   argint(0, &pid);
   argaddr(1, &addr);
 
+  // copyout includes padding and the unused tail of name.
+  memset(&info, 0, sizeof(info));
   if(getprocinfo(pid, &info) < 0)
     return -1;
 

@@ -197,7 +197,16 @@ UPROGS=\
 	$U/_wc\
 	$U/_zombie\
 	$U/_trace\
-	$U/_test_procinfo
+	$U/_test_procinfo\
+	$U/_procstress\
+	$U/_pi_exec_a\
+	$U/_pi_exec_b
+
+$U/pi_exec_a.o: $U/pi_exec.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+$U/pi_exec_b.o: $U/pi_exec.c
+	$(CC) $(CFLAGS) -DPI_LARGE -c -o $@ $<
 
 ifeq ($(LAB),syscall)
 UPROGS += \

@@ -1,0 +1,22 @@
+[
+  {
+    "command": "procstress",
+    "status": "PASS",
+    "seconds": 20.12
+  },
+  {
+    "command": "procstress",
+    "status": "PASS",
+    "seconds": 20.07
+  },
+  {
+    "command": "test_procinfo",
+    "status": "PASS",
+    "seconds": 0.26
+  },
+  {
+    "command": "test_procinfo",
+    "status": "PASS",
+    "seconds": 0.29
+  }
+]

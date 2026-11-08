@@ -18,6 +18,7 @@ struct level_state {
 // Global buffers in BSS to guarantee 0 stack consumption across depth levels.
 static char pathbuf[MAXPATH + DIRSIZ + 4];
 static struct level_state stack[MAX_TREE_DEPTH];
+static char skipbuf[512];
 
 // Print indentation: 2 spaces per depth level.
 static void
@@ -89,16 +90,19 @@ tree_iterative(char *init_path)
 
     // Open directory if not already open.
     if(fd < 0){
-      // Temporarily strip trailing slash if needed (xv6 allows open("dir/"))
       if((fd = open(pathbuf, O_RDONLY)) < 0){
         fprintf(2, "tree: cannot open %s\n", pathbuf);
         depth--;
         continue;
       }
-      // Advance to where we left off in this directory.
-      for(int j = 0; j < stack[depth].entry_idx; j++){
-        if(read(fd, &de, sizeof(de)) != sizeof(de))
+      // Fast block-buffered advance to where we left off in this directory (reduces syscall overhead).
+      int to_skip = stack[depth].entry_idx * sizeof(struct dirent);
+      while(to_skip > 0){
+        int chunk = to_skip > sizeof(skipbuf) ? sizeof(skipbuf) : to_skip;
+        int n = read(fd, skipbuf, chunk);
+        if(n <= 0)
           break;
+        to_skip -= n;
       }
     }
 
@@ -140,16 +144,17 @@ tree_iterative(char *init_path)
       if(st.type == T_DIR){
         printf("%s/\n", name);
 
-        // Close current directory FD before descending.
-        close(fd);
-        fd = -1;
-
-        // Push new level onto stack.
+        // Verify stack depth limit BEFORE closing current directory fd!
+        // This ensures remaining siblings in current directory are NOT skipped.
         if(depth + 1 >= MAX_TREE_DEPTH){
-          fprintf(2, "tree: maximum depth exceeded\n");
+          fprintf(2, "tree: maximum depth exceeded: %s\n", pathbuf);
           pathbuf[base_len] = '\0';
           continue;
         }
+
+        // Close current directory FD before descending.
+        close(fd);
+        fd = -1;
 
         depth++;
         int new_len = base_len + namelen;

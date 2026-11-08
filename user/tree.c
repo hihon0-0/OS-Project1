@@ -5,205 +5,107 @@
 #include "kernel/fcntl.h"
 #include "kernel/param.h"
 
-// Maximum directory depth supported. In xv6, MAXPATH is 128,
-// so any path cannot exceed ~64 levels (minimum 2 chars per level).
-#define MAX_TREE_DEPTH 64
-
-// State tracked per directory level in explicit iterative stack.
-struct level_state {
-  int base_len;   // Length of pathbuf prefix for this directory (including trailing '/')
-  int entry_idx;  // Number of dirent slots read so far in this directory
-};
-
-// Global buffers in BSS to guarantee 0 stack consumption across depth levels.
-static char pathbuf[MAXPATH + DIRSIZ + 4];
-static struct level_state stack[MAX_TREE_DEPTH];
-static char skipbuf[512];
-
-// Print indentation: 2 spaces per depth level.
+// Print indentation: 2 spaces per depth level (Hint 3)
 static void
 print_indent(int depth)
 {
   for(int i = 0; i < depth; i++){
-    write(1, "  ", 2);
+    printf("  ");
   }
 }
 
-// Iterative tree traversal.
-// Completely eliminates both stack overflow (0 recursion, O(1) stack space)
-// and file descriptor exhaustion (at most 1 open directory FD at any time).
-static void
-tree_iterative(char *init_path)
+// Recursively traverse directory tree (Hint 2)
+void
+tree(char *path, int depth)
 {
+  char buf[MAXPATH], *p;
   int fd;
-  struct stat st;
   struct dirent de;
+  struct stat st;
 
-  if((fd = open(init_path, O_RDONLY)) < 0){
-    fprintf(2, "tree: cannot open %s\n", init_path);
-    exit(1);
+  if((fd = open(path, O_RDONLY)) < 0){
+    fprintf(2, "tree: cannot open %s\n", path);
+    if(depth == 0)
+      exit(1);
+    return;
   }
 
   if(fstat(fd, &st) < 0){
-    fprintf(2, "tree: cannot stat %s\n", init_path);
+    fprintf(2, "tree: cannot stat %s\n", path);
     close(fd);
-    exit(1);
+    if(depth == 0)
+      exit(1);
+    return;
   }
 
-  // If initial path is a regular file or device, print name and exit.
+  // If root argument is a regular file or device (Hint 4)
   if(st.type != T_DIR){
-    printf("%s\n", init_path);
+    printf("%s\n", path);
     close(fd);
     return;
   }
 
-  // Print root directory name.
-  int init_len = strlen(init_path);
-  if(init_len > 0 && init_path[init_len - 1] == '/')
-    printf("%s\n", init_path);
-  else
-    printf("%s/\n", init_path);
+  // Print root directory name at depth 0
+  if(depth == 0){
+    int len = strlen(path);
+    if(len > 0 && path[len - 1] == '/')
+      printf("%s\n", path);
+    else
+      printf("%s/\n", path);
+  }
 
-  close(fd);
-
-  int needs_slash = (init_len > 0 && init_path[init_len - 1] != '/');
-  if(init_len + (needs_slash ? 1 : 0) >= MAXPATH){
+  // Check path length to prevent buffer overflow (Hint 6)
+  if(strlen(path) + 1 + DIRSIZ + 1 >= sizeof(buf)){
     fprintf(2, "tree: path too long\n");
-    exit(1);
+    close(fd);
+    return;
   }
 
-  // Initialize shared pathbuf.
-  memmove(pathbuf, init_path, init_len);
-  int cur_len = init_len;
-  if(needs_slash){
-    pathbuf[cur_len++] = '/';
+  strcpy(buf, path);
+  p = buf + strlen(buf);
+  if(p > buf && *(p - 1) != '/'){
+    *p++ = '/';
   }
-  pathbuf[cur_len] = '\0';
 
-  // Push root directory onto level stack.
-  int depth = 0;
-  stack[0].base_len = cur_len;
-  stack[0].entry_idx = 0;
-
-  // Active directory file descriptor.
-  fd = -1;
-
-  while(depth >= 0){
-    int base_len = stack[depth].base_len;
-
-    // Restore pathbuf to current directory prefix.
-    pathbuf[base_len] = '\0';
-
-    // Open directory if not already open.
-    if(fd < 0){
-      // Temporarily strip trailing slash for open and clean error display (unless root "/")
-      int has_slash = (base_len > 1 && pathbuf[base_len - 1] == '/');
-      if(has_slash)
-        pathbuf[base_len - 1] = '\0';
-
-      fd = open(pathbuf, O_RDONLY);
-
-      if(fd < 0){
-        fprintf(2, "tree: cannot open %s\n", pathbuf);
-        if(has_slash)
-          pathbuf[base_len - 1] = '/';
-        depth--;
-        continue;
-      }
-
-      if(has_slash)
-        pathbuf[base_len - 1] = '/';
-
-      // Fast block-buffered advance to where we left off in this directory (reduces syscall overhead).
-      int to_skip = stack[depth].entry_idx * sizeof(struct dirent);
-      while(to_skip > 0){
-        int chunk = to_skip > sizeof(skipbuf) ? sizeof(skipbuf) : to_skip;
-        int n = read(fd, skipbuf, chunk);
-        if(n <= 0)
-          break;
-        to_skip -= n;
-      }
-    }
-
-    // Read next entry.
-    int found_entry = 0;
-    while(read(fd, &de, sizeof(de)) == sizeof(de)){
-      stack[depth].entry_idx++;
-
-      if(de.inum == 0)
-        continue;
-
-      // Null-terminate entry name safely (DIRSIZ = 14).
-      char name[DIRSIZ + 1];
-      memmove(name, de.name, DIRSIZ);
-      name[DIRSIZ] = '\0';
-
-      // Skip "." and ".."
-      if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
-        continue;
-
-      int namelen = strlen(name);
-      if(base_len + namelen >= MAXPATH){
-        fprintf(2, "tree: path too long\n");
-        continue;
-      }
-
-      // Append child name to pathbuf.
-      memmove(pathbuf + base_len, name, namelen);
-      pathbuf[base_len + namelen] = '\0';
-
-      if(stat(pathbuf, &st) < 0){
-        fprintf(2, "tree: cannot stat %s\n", pathbuf);
-        pathbuf[base_len] = '\0';
-        continue;
-      }
-
-      print_indent(depth + 1);
-
-      if(st.type == T_DIR){
-        printf("%s/\n", name);
-
-        // Verify stack depth and path limits BEFORE closing current directory fd!
-        // This ensures remaining siblings in current directory are NOT skipped.
-        if(depth + 1 >= MAX_TREE_DEPTH || base_len + namelen + 1 >= MAXPATH){
-          if(depth + 1 >= MAX_TREE_DEPTH)
-            fprintf(2, "tree: maximum depth exceeded\n");
-          else
-            fprintf(2, "tree: path too long\n");
-          pathbuf[base_len] = '\0';
-          continue;
-        }
-
-        // Close current directory FD before descending.
-        close(fd);
-        fd = -1;
-
-        depth++;
-        int new_len = base_len + namelen;
-        pathbuf[new_len++] = '/';
-        pathbuf[new_len] = '\0';
-        stack[depth].base_len = new_len;
-        stack[depth].entry_idx = 0;
-
-        found_entry = 1;
-        break; // Descend to new level
-      } else {
-        printf("%s\n", name);
-        pathbuf[base_len] = '\0';
-      }
-    }
-
-    // If we descended, loop back to process child.
-    if(found_entry)
+  while(read(fd, &de, sizeof(de)) == sizeof(de)){
+    if(de.inum == 0)
       continue;
 
-    // No more entries at this level: close fd and backtrack to parent.
-    if(fd >= 0){
-      close(fd);
-      fd = -1;
+    // Ensure null-terminated entry name safely (DIRSIZ = 14)
+    char name[DIRSIZ + 1];
+    memmove(name, de.name, DIRSIZ);
+    name[DIRSIZ] = '\0';
+
+    // Skip special directories "." and ".." to avoid infinite recursion (Hint 5)
+    if(strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+      continue;
+
+    // Build child path: format parent/child (Hint 6)
+    if((p - buf) + strlen(name) + 1 >= sizeof(buf)){
+      fprintf(2, "tree: path too long\n");
+      continue;
     }
-    depth--;
+    strcpy(p, name);
+
+    struct stat st_child;
+    if(stat(buf, &st_child) < 0){
+      fprintf(2, "tree: cannot stat %s\n", buf);
+      continue;
+    }
+
+    // Print indentation for child
+    print_indent(depth + 1);
+
+    if(st_child.type == T_DIR){
+      printf("%s/\n", name);
+      // Recursively traverse subdirectory (Hint 2)
+      tree(buf, depth + 1);
+    } else {
+      printf("%s\n", name);
+    }
   }
+
+  close(fd);
 }
 
 int
@@ -222,6 +124,6 @@ main(int argc, char *argv[])
     exit(1);
   }
 
-  tree_iterative(path);
+  tree(path, 0);
   exit(0);
 }

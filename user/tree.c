@@ -66,10 +66,16 @@ tree_iterative(char *init_path)
 
   close(fd);
 
+  int needs_slash = (init_len > 0 && init_path[init_len - 1] != '/');
+  if(init_len + (needs_slash ? 1 : 0) >= MAXPATH){
+    fprintf(2, "tree: path too long\n");
+    exit(1);
+  }
+
   // Initialize shared pathbuf.
   memmove(pathbuf, init_path, init_len);
   int cur_len = init_len;
-  if(cur_len > 0 && pathbuf[cur_len - 1] != '/'){
+  if(needs_slash){
     pathbuf[cur_len++] = '/';
   }
   pathbuf[cur_len] = '\0';
@@ -90,11 +96,24 @@ tree_iterative(char *init_path)
 
     // Open directory if not already open.
     if(fd < 0){
-      if((fd = open(pathbuf, O_RDONLY)) < 0){
+      // Temporarily strip trailing slash for open and clean error display (unless root "/")
+      int has_slash = (base_len > 1 && pathbuf[base_len - 1] == '/');
+      if(has_slash)
+        pathbuf[base_len - 1] = '\0';
+
+      fd = open(pathbuf, O_RDONLY);
+
+      if(fd < 0){
         fprintf(2, "tree: cannot open %s\n", pathbuf);
+        if(has_slash)
+          pathbuf[base_len - 1] = '/';
         depth--;
         continue;
       }
+
+      if(has_slash)
+        pathbuf[base_len - 1] = '/';
+
       // Fast block-buffered advance to where we left off in this directory (reduces syscall overhead).
       int to_skip = stack[depth].entry_idx * sizeof(struct dirent);
       while(to_skip > 0){
@@ -124,8 +143,8 @@ tree_iterative(char *init_path)
         continue;
 
       int namelen = strlen(name);
-      if(base_len + namelen + 1 >= MAXPATH){
-        fprintf(2, "tree: path too long: %s%s\n", pathbuf, name);
+      if(base_len + namelen >= MAXPATH){
+        fprintf(2, "tree: path too long\n");
         continue;
       }
 
@@ -144,10 +163,13 @@ tree_iterative(char *init_path)
       if(st.type == T_DIR){
         printf("%s/\n", name);
 
-        // Verify stack depth limit BEFORE closing current directory fd!
+        // Verify stack depth and path limits BEFORE closing current directory fd!
         // This ensures remaining siblings in current directory are NOT skipped.
-        if(depth + 1 >= MAX_TREE_DEPTH){
-          fprintf(2, "tree: maximum depth exceeded: %s\n", pathbuf);
+        if(depth + 1 >= MAX_TREE_DEPTH || base_len + namelen + 1 >= MAXPATH){
+          if(depth + 1 >= MAX_TREE_DEPTH)
+            fprintf(2, "tree: maximum depth exceeded\n");
+          else
+            fprintf(2, "tree: path too long\n");
           pathbuf[base_len] = '\0';
           continue;
         }

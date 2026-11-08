@@ -200,7 +200,8 @@ UPROGS=\
 	$U/_test_procinfo\
 	$U/_procstress\
 	$U/_pi_exec_a\
-	$U/_pi_exec_b
+	$U/_pi_exec_b\
+	$U/_test_tree
 
 $U/pi_exec_a.o: $U/pi_exec.c
 	$(CC) $(CFLAGS) -c -o $@ $<

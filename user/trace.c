@@ -23,7 +23,10 @@ main(int argc, char *argv[])
     nargv[i-2] = argv[i];
   }
   nargv[argc-2] = 0;
+  
   exec(nargv[0], nargv);
-  printf("trace: exec failed\n");
-  exit(0);
+  
+  // Báo lỗi cho tiến trình cha nếu exec thất bại
+  fprintf(2, "trace: exec %s failed\n", nargv[0]);
+  exit(1);
 }
